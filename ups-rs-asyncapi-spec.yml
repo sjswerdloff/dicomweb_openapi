@@ -1,150 +1,160 @@
-asyncapi: 3.0.0
+asyncapi: 2.6.0
+id: urn:com:example:dicom:ups-rs:api
 info:
   title: DICOM UPS-RS WebSocket API
   version: 1.0.0
-  description: AsyncAPI 3.0 specification for UPS-RS WebSocket-based subscription and notification
+  description: AsyncAPI 2.6.0 specification for UPS-RS WebSocket-based subscription and notification
+  contact:
+    name: API Support
+    url: https://www.example.com/support
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+defaultContentType: application/json
+
+tags:
+  - name: UPS
+    description: Unified Procedure Step
+  - name: DICOM
+    description: Digital Imaging and Communications in Medicine
 
 servers:
   production:
-    host: example.com
+    url: example.com/ups-rs
     protocol: wss
-    pathname: /ups-rs
     description: Production UPS-RS WebSocket server
 
 channels:
-  workitemsSubscription:
-    address: /workitems/subscription
-    messages:
-      subscriptionRequest:
+  /workitems/subscription:
+    subscribe:
+      operationId: subscribeToWorkitems
+      summary: Subscribe to UPS Workitem events
+      message:
         $ref: '#/components/messages/SubscriptionRequest'
-      eventNotification:
-        $ref: '#/components/messages/EventNotification'
+    publish:
+      operationId: receiveWorkitemNotifications
+      summary: Receive UPS Workitem event notifications
+      message:
+        $ref: '#/components/messages/GeneralEventNotification'
 
-  workitemsSubscriptionWithUID:
-    address: /workitems/subscription/{subscriptionUID}
+  /workitems/subscription/{subscriptionUID}:
     parameters:
       subscriptionUID:
         $ref: '#/components/parameters/subscriptionUID'
-    messages:
-      eventNotification:
-        $ref: '#/components/messages/EventNotification'
-      unsubscriptionRequest:
+    publish:
+      operationId: receiveSpecificSubscriptionNotifications
+      summary: Receive UPS Workitem event notifications for a specific subscription
+      message:
+        $ref: '#/components/messages/SpecificEventNotification'
+    subscribe:
+      operationId: unsubscribeFromWorkitems
+      summary: Unsubscribe from UPS Workitem events
+      message:
         $ref: '#/components/messages/UnsubscriptionRequest'
-
-operations:
-  subscribeToWorkitems:
-    action: send
-    channel: 
-      $ref: '#/channels/workitemsSubscription'
-    messages:
-      - $ref: '#/channels/workitemsSubscription/messages/subscriptionRequest'
-    summary: Subscribe to UPS Workitem events
-
-  receiveWorkitemNotifications:
-    action: receive
-    channel:
-      $ref: '#/channels/workitemsSubscription'
-    messages:
-      - $ref: '#/channels/workitemsSubscription/messages/eventNotification'
-    summary: Receive UPS Workitem event notifications
-
-  receiveSpecificSubscriptionNotifications:
-    action: receive
-    channel:
-      $ref: '#/channels/workitemsSubscriptionWithUID'
-    messages:
-      - $ref: '#/channels/workitemsSubscriptionWithUID/messages/eventNotification'
-    summary: Receive UPS Workitem event notifications for a specific subscription
-
-  unsubscribeFromWorkitems:
-    action: send
-    channel:
-      $ref: '#/channels/workitemsSubscriptionWithUID'
-    messages:
-      - $ref: '#/channels/workitemsSubscriptionWithUID/messages/unsubscriptionRequest'
-    summary: Unsubscribe from UPS Workitem events
 
 components:
   parameters:
     subscriptionUID:
       description: Unique identifier for the subscription
-      location: '$message.payload#/subscriptionUID'
+      schema:
+        type: string
 
   messages:
     SubscriptionRequest:
       name: SubscriptionRequest
       title: UPS Workitem Subscription Request
+      messageId: ups.workitem.subscription.request
       payload:
-        type: object
-        required:
-          - filter
-        properties:
-          filter:
-            type: object
-            properties:
-              worklistLabel:
-                type: string
-              procedureStepState:
-                type: string
-                enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
-              scheduledStationAETitle:
-                type: string
-              performerAETitle:
-                type: string
-          deleteSubscription:
-            type: boolean
-            description: If true, delete any existing subscriptions matching the filter
+        $ref: '#/components/schemas/SubscriptionRequestPayload'
 
     UnsubscriptionRequest:
       name: UnsubscriptionRequest
       title: UPS Workitem Unsubscription Request
+      messageId: ups.workitem.unsubscription.request
       payload:
-        type: object
-        required:
-          - reason
-        properties:
-          reason:
-            type: string
-            enum: [USER_REQUEST, CONNECTION_CLOSURE]
-          subscriptionUID:
-            type: string
+        $ref: '#/components/schemas/UnsubscriptionRequestPayload'
 
-    EventNotification:
-      name: EventNotification
-      title: UPS Workitem Event Notification
+    GeneralEventNotification:
+      name: GeneralEventNotification
+      title: General UPS Workitem Event Notification
+      messageId: ups.workitem.event.notification.general
       payload:
-        type: object
-        required:
-          - eventType
-          - workitemUID
-        properties:
-          eventType:
-            type: string
-            enum: [CREATED, UPDATED, STATE_REPORT, CANCELED, COMPLETED]
-          workitemUID:
-            type: string
-          subscriptionUID:
-            type: string
-          procedureStepState:
-            type: string
-            enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
-          progressInformation:
-            type: object
-            properties:
-              numberOfCompletedSuboperations:
-                type: integer
-              numberOfFailedSuboperations:
-                type: integer
-              numberOfWarningSuboperations:
-                type: integer
-              numberOfRemainingSuboperations:
-                type: integer
-          cancellationReason:
-            type: string
-          workitem:
-            $ref: '#/components/schemas/Workitem'
+        $ref: '#/components/schemas/EventNotificationPayload'
+
+    SpecificEventNotification:
+      name: SpecificEventNotification
+      title: Specific UPS Workitem Event Notification
+      messageId: ups.workitem.event.notification.specific
+      payload:
+        $ref: '#/components/schemas/EventNotificationPayload'
 
   schemas:
+    SubscriptionRequestPayload:
+      type: object
+      required:
+        - filter
+      properties:
+        filter:
+          type: object
+          properties:
+            worklistLabel:
+              type: string
+            procedureStepState:
+              type: string
+              enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
+            scheduledStationAETitle:
+              type: string
+            performerAETitle:
+              type: string
+        deleteSubscription:
+          type: boolean
+          description: If true, delete any existing subscriptions matching the filter
+
+    UnsubscriptionRequestPayload:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          enum: [USER_REQUEST, CONNECTION_CLOSURE]
+        subscriptionUID:
+          type: string
+
+    EventNotificationPayload:
+      type: object
+      required:
+        - eventType
+        - workitemUID
+      properties:
+        eventType:
+          type: string
+          enum: [CREATED, UPDATED, STATE_REPORT, CANCELED, COMPLETED]
+        workitemUID:
+          type: string
+        subscriptionUID:
+          type: string
+        procedureStepState:
+          type: string
+          enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
+        progressInformation:
+          type: object
+          properties:
+            numberOfCompletedSuboperations:
+              type: integer
+            numberOfFailedSuboperations:
+              type: integer
+            numberOfWarningSuboperations:
+              type: integer
+            numberOfRemainingSuboperations:
+              type: integer
+        cancellationReason:
+          type: string
+        workitem:
+          $ref: '#/components/schemas/Workitem'
+
     Workitem:
       type: object
       required:
@@ -219,4 +229,3 @@ components:
           type: string
         codeMeaning:
           type: string
-
