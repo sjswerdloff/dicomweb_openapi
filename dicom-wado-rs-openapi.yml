@@ -1,0 +1,289 @@
+openapi: 3.0.0
+info:
+  title: DICOM Web WADO-RS API
+  description: API for DICOM Web Access to DICOM Objects (WADO-RS) service
+  version: 1.1.0
+  contact:
+    name: DICOM Standard Committee
+    url: https://www.dicomstandard.org/
+
+servers:
+  - url: https://api.example.com/dicom-web
+    description: Main server
+
+paths:
+  /studies/{studyUID}:
+    get:
+      summary: Retrieve Study
+      description: Retrieve all DICOM instances for a specific study
+      tags:
+        - WADO-RS
+      parameters:
+        - $ref: '#/components/parameters/studyUID'
+        - $ref: '#/components/parameters/AcceptHeader'
+        - $ref: '#/components/parameters/transferSyntax'
+        - $ref: '#/components/parameters/charset'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulRetrieval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      security:
+        - bearerAuth: []
+
+  /studies/{studyUID}/series/{seriesUID}:
+    get:
+      summary: Retrieve Series
+      description: Retrieve all DICOM instances for a specific series within a study
+      tags:
+        - WADO-RS
+      parameters:
+        - $ref: '#/components/parameters/studyUID'
+        - $ref: '#/components/parameters/seriesUID'
+        - $ref: '#/components/parameters/AcceptHeader'
+        - $ref: '#/components/parameters/transferSyntax'
+        - $ref: '#/components/parameters/charset'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulRetrieval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      security:
+        - bearerAuth: []
+
+  /studies/{studyUID}/series/{seriesUID}/instances/{instanceUID}:
+    get:
+      summary: Retrieve Instance
+      description: Retrieve a specific DICOM instance
+      tags:
+        - WADO-RS
+      parameters:
+        - $ref: '#/components/parameters/studyUID'
+        - $ref: '#/components/parameters/seriesUID'
+        - $ref: '#/components/parameters/instanceUID'
+        - $ref: '#/components/parameters/AcceptHeader'
+        - $ref: '#/components/parameters/transferSyntax'
+        - $ref: '#/components/parameters/charset'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulRetrieval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      security:
+        - bearerAuth: []
+
+  /studies/{studyUID}/metadata:
+    get:
+      summary: Retrieve Study Metadata
+      description: Retrieve metadata for all DICOM instances in a study
+      tags:
+        - WADO-RS
+      parameters:
+        - $ref: '#/components/parameters/studyUID'
+        - $ref: '#/components/parameters/includeField'
+        - $ref: '#/components/parameters/charset'
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DICOMMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      security:
+        - bearerAuth: []
+
+components:
+  parameters:
+    studyUID:
+      name: studyUID
+      in: path
+      required: true
+      description: Study Instance UID
+      schema:
+        type: string
+        pattern: '^[0-9.]+$'
+    seriesUID:
+      name: seriesUID
+      in: path
+      required: true
+      description: Series Instance UID
+      schema:
+        type: string
+        pattern: '^[0-9.]+$'
+    instanceUID:
+      name: instanceUID
+      in: path
+      required: true
+      description: SOP Instance UID
+      schema:
+        type: string
+        pattern: '^[0-9.]+$'
+    AcceptHeader:
+      name: Accept
+      in: header
+      description: Acceptable media types for the response
+      required: true
+      schema:
+        type: string
+        enum:
+          - multipart/related; type="application/dicom"
+          - application/dicom
+          - application/dicom+json
+    transferSyntax:
+      name: transferSyntax
+      in: query
+      description: Requested transfer syntax for the response
+      schema:
+        type: string
+        enum:
+          - 1.2.840.10008.1.2 # Implicit VR Little Endian
+          - 1.2.840.10008.1.2.1 # Explicit VR Little Endian
+          - 1.2.840.10008.1.2.2 # Explicit VR Big Endian
+          - 1.2.840.10008.1.2.4.50 # JPEG Baseline
+          - 1.2.840.10008.1.2.4.51 # JPEG Extended
+          - 1.2.840.10008.1.2.4.57 # JPEG Lossless
+          - 1.2.840.10008.1.2.4.70 # JPEG Lossless SV1
+          - 1.2.840.10008.1.2.4.80 # JPEG-LS Lossless
+          - 1.2.840.10008.1.2.4.81 # JPEG-LS Lossy
+          - 1.2.840.10008.1.2.4.90 # JPEG 2000 Lossless
+          - 1.2.840.10008.1.2.4.91 # JPEG 2000 Lossy
+    charset:
+      name: charset
+      in: query
+      description: Character set for text data
+      schema:
+        type: string
+        enum:
+          - ISO_IR 100 # Latin-1
+          - ISO_IR 101 # Latin-2
+          - ISO_IR 109 # Latin-3
+          - ISO_IR 110 # Latin-4
+          - ISO_IR 144 # Cyrillic
+          - ISO_IR 127 # Arabic
+          - ISO_IR 126 # Greek
+          - ISO_IR 138 # Hebrew
+          - ISO_IR 148 # Latin-5
+          - ISO_IR 13  # Japanese
+          - ISO_IR 166 # Thai
+          - ISO_IR 192 # Unicode
+    includeField:
+      name: includefield
+      in: query
+      description: Include only specified DICOM attributes
+      schema:
+        type: array
+        items:
+          type: string
+        example: ["00100020", "00100010"]
+
+  responses:
+    SuccessfulRetrieval:
+      description: Successful retrieval
+      content:
+        multipart/related:
+          schema:
+            type: string
+            format: binary
+    BadRequest:
+      description: Bad request
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not Found
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotAcceptable:
+      description: Not Acceptable
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: Service Unavailable
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    DICOMMetadata:
+      type: object
+      description: DICOM metadata in JSON format
+      additionalProperties: true
+    ErrorResponse:
+      type: object
+      properties:
+        errorMessage:
+          type: string
+        errorCode:
+          type: string
+        errorDetails:
+          type: object
+          additionalProperties: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JSON Web Token (JWT) used for authentication

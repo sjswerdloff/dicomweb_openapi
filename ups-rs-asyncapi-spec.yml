@@ -1,0 +1,188 @@
+asyncapi: 2.5.0
+info:
+  title: DICOM UPS-RS WebSocket API
+  version: 1.0.0
+  description: AsyncAPI specification for UPS-RS WebSocket-based subscription and notification
+
+servers:
+  production:
+    url: wss://example.com/ups-rs
+    protocol: wss
+    description: Production UPS-RS WebSocket server
+
+channels:
+  /workitems/subscription:
+    subscribe:
+      summary: Subscribe to UPS Workitem events
+      message:
+        $ref: '#/components/messages/SubscriptionRequest'
+    publish:
+      summary: Receive UPS Workitem event notifications
+      message:
+        $ref: '#/components/messages/EventNotification'
+
+  /workitems/subscription/{subscriptionUID}:
+    parameters:
+      subscriptionUID:
+        $ref: '#/components/parameters/subscriptionUID'
+    publish:
+      summary: Receive UPS Workitem event notifications for a specific subscription
+      message:
+        $ref: '#/components/messages/EventNotification'
+    unsubscribe:
+      summary: Unsubscribe from UPS Workitem events
+      message:
+        $ref: '#/components/messages/UnsubscriptionRequest'
+
+components:
+  parameters:
+    subscriptionUID:
+      description: Unique identifier for the subscription
+      schema:
+        type: string
+
+  messages:
+    SubscriptionRequest:
+      name: SubscriptionRequest
+      title: UPS Workitem Subscription Request
+      payload:
+        type: object
+        required:
+          - filter
+        properties:
+          filter:
+            type: object
+            properties:
+              worklistLabel:
+                type: string
+              procedureStepState:
+                type: string
+                enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
+              scheduledStationAETitle:
+                type: string
+              performerAETitle:
+                type: string
+          deleteSubscription:
+            type: boolean
+            description: If true, delete any existing subscriptions matching the filter
+
+    UnsubscriptionRequest:
+      name: UnsubscriptionRequest
+      title: UPS Workitem Unsubscription Request
+      payload:
+        type: object
+        required:
+          - reason
+        properties:
+          reason:
+            type: string
+            enum: [USER_REQUEST, CONNECTION_CLOSURE]
+
+    EventNotification:
+      name: EventNotification
+      title: UPS Workitem Event Notification
+      payload:
+        type: object
+        required:
+          - eventType
+          - workitemUID
+        properties:
+          eventType:
+            type: string
+            enum: [CREATED, UPDATED, STATE_REPORT, CANCELED, COMPLETED]
+          workitemUID:
+            type: string
+          procedureStepState:
+            type: string
+            enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
+          progressInformation:
+            type: object
+            properties:
+              numberOfCompletedSuboperations:
+                type: integer
+              numberOfFailedSuboperations:
+                type: integer
+              numberOfWarningSuboperations:
+                type: integer
+              numberOfRemainingSuboperations:
+                type: integer
+          cancellationReason:
+            type: string
+          workitem:
+            $ref: '#/components/schemas/Workitem'
+
+  schemas:
+    Workitem:
+      type: object
+      required:
+        - workitemUID
+        - procedureStepState
+        - scheduledProcedureStepStartDateTime
+        - scheduledWorkitemCodeSequence
+        - inputInformationSequence
+      properties:
+        workitemUID:
+          type: string
+        procedureStepState:
+          type: string
+          enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
+        scheduledProcedureStepStartDateTime:
+          type: string
+          format: date-time
+        scheduledWorkitemCodeSequence:
+          $ref: '#/components/schemas/CodeSequence'
+        inputInformationSequence:
+          type: array
+          items:
+            type: object
+            properties:
+              studyInstanceUID:
+                type: string
+              seriesInstanceUID:
+                type: string
+        scheduledStationNameCodeSequence:
+          $ref: '#/components/schemas/CodeSequence'
+        scheduledStationClassCodeSequence:
+          $ref: '#/components/schemas/CodeSequence'
+        scheduledStationGeographicLocationCodeSequence:
+          $ref: '#/components/schemas/CodeSequence'
+        scheduledHumanPerformersSequence:
+          type: array
+          items:
+            type: object
+            properties:
+              humanPerformerCodeSequence:
+                $ref: '#/components/schemas/CodeSequence'
+              humanPerformerName:
+                type: string
+        scheduledProcedureStepDescription:
+          type: string
+        scheduledProtocolCodeSequence:
+          $ref: '#/components/schemas/CodeSequence'
+        referencedRequestSequence:
+          type: array
+          items:
+            type: object
+            properties:
+              studyInstanceUID:
+                type: string
+              accessionNumber:
+                type: string
+              requestedProcedureID:
+                type: string
+              requestedProcedureDescription:
+                type: string
+
+    CodeSequence:
+      type: object
+      required:
+        - codeValue
+        - codingSchemeDesignator
+        - codeMeaning
+      properties:
+        codeValue:
+          type: string
+        codingSchemeDesignator:
+          type: string
+        codeMeaning:
+          type: string

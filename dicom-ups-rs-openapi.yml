@@ -1,0 +1,291 @@
+openapi: 3.0.0
+info:
+  title: DICOM Web UPS-RS API
+  version: 1.0.0
+  description: API specification for DICOM Web UPS-RS (Unified Procedure Step - RESTful Services)
+
+paths:
+  /workitems:
+    get:
+      summary: Search for Workitems
+      description: This resource allows searching for UPS Workitems based on specified parameters.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/FuzzyMatching'
+        - $ref: '#/components/parameters/IncludeField'
+        - $ref: '#/components/parameters/WorklistLabel'
+        - $ref: '#/components/parameters/ProcedureStepState'
+        - $ref: '#/components/parameters/ScheduledProcedureStepStartDateTime'
+        - $ref: '#/components/parameters/ScheduledStationName'
+        - $ref: '#/components/parameters/ScheduledStationAETitle'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workitem'
+    post:
+      summary: Create a Workitem
+      description: Creates a new UPS Workitem
+      requestBody:
+        required: true
+        content:
+          application/dicom+json:
+            schema:
+              $ref: '#/components/schemas/Workitem'
+      responses:
+        '201':
+          description: Workitem created successfully
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URI of the created Workitem
+
+  /workitems/{workitemUID}:
+    get:
+      summary: Retrieve a Workitem
+      description: Retrieves a specific UPS Workitem
+      parameters:
+        - $ref: '#/components/parameters/WorkitemUID'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/dicom+json:
+              schema:
+                $ref: '#/components/schemas/Workitem'
+    
+    post:
+      summary: Update a Workitem
+      description: Updates a specific UPS Workitem
+      parameters:
+        - $ref: '#/components/parameters/WorkitemUID'
+      requestBody:
+        required: true
+        content:
+          application/dicom+json:
+            schema:
+              $ref: '#/components/schemas/Workitem'
+      responses:
+        '200':
+          description: Workitem updated successfully
+
+  /workitems/{workitemUID}/state:
+    put:
+      summary: Change Workitem State
+      description: Changes the state of a specific UPS Workitem
+      parameters:
+        - $ref: '#/components/parameters/WorkitemUID'
+      requestBody:
+        required: true
+        content:
+          application/dicom+json:
+            schema:
+              type: object
+              required:
+                - ProcedureStepState
+              properties:
+                ProcedureStepState:
+                  type: string
+                  enum: [IN PROGRESS, COMPLETED, CANCELED]
+      responses:
+        '200':
+          description: Workitem state changed successfully
+
+  /workitems/{workitemUID}/cancelrequest:
+    post:
+      summary: Request Cancellation of a Workitem
+      description: Requests cancellation of a specific UPS Workitem
+      parameters:
+        - $ref: '#/components/parameters/WorkitemUID'
+      requestBody:
+        required: true
+        content:
+          application/dicom+json:
+            schema:
+              type: object
+              required:
+                - ReasonForCancellation
+              properties:
+                ReasonForCancellation:
+                  type: string
+      responses:
+        '202':
+          description: Cancellation request accepted
+
+components:
+  parameters:
+    WorkitemUID:
+      name: workitemUID
+      in: path
+      required: true
+      description: Unique identifier of the Workitem
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      description: Maximum number of results to return
+      schema:
+        type: integer
+    Offset:
+      name: offset
+      in: query
+      description: Number of results to skip before returning matches
+      schema:
+        type: integer
+    FuzzyMatching:
+      name: fuzzymatching
+      in: query
+      description: Whether fuzzy semantic matching should be performed
+      schema:
+        type: boolean
+    IncludeField:
+      name: includefield
+      in: query
+      description: Fields to include in the response
+      schema:
+        type: array
+        items:
+          type: string
+    WorklistLabel:
+      name: WorklistLabel
+      in: query
+      description: Label of the Worklist to which the Workitem belongs
+      schema:
+        type: string
+    ProcedureStepState:
+      name: ProcedureStepState
+      in: query
+      description: Current state of the Procedure Step
+      schema:
+        type: string
+        enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
+    ScheduledProcedureStepStartDateTime:
+      name: ScheduledProcedureStepStartDateTime
+      in: query
+      description: Scheduled start date and time for the Procedure Step
+      schema:
+        type: string
+        format: date-time
+    ScheduledStationName:
+      name: ScheduledStationName
+      in: query
+      description: Name of the scheduled station
+      schema:
+        type: string
+    ScheduledStationAETitle:
+      name: ScheduledStationAETitle
+      in: query
+      description: Application Entity Title of the scheduled station
+      schema:
+        type: string
+
+  schemas:
+    Workitem:
+      type: object
+      required:
+        - WorkitemUID
+        - ProcedureStepState
+        - ScheduledProcedureStepStartDateTime
+        - ScheduledWorkitemCodeSequence
+        - InputInformationSequence
+      properties:
+        WorkitemUID:
+          type: string
+        ProcedureStepState:
+          type: string
+          enum: [SCHEDULED, IN PROGRESS, COMPLETED, CANCELED]
+        ScheduledProcedureStepStartDateTime:
+          type: string
+          format: date-time
+        ScheduledWorkitemCodeSequence:
+          type: object
+          properties:
+            CodeValue:
+              type: string
+            CodingSchemeDesignator:
+              type: string
+            CodeMeaning:
+              type: string
+        InputInformationSequence:
+          type: array
+          items:
+            type: object
+            properties:
+              StudyInstanceUID:
+                type: string
+              SeriesInstanceUID:
+                type: string
+        ScheduledStationNameCodeSequence:
+          type: object
+          properties:
+            CodeValue:
+              type: string
+            CodingSchemeDesignator:
+              type: string
+            CodeMeaning:
+              type: string
+        ScheduledStationClassCodeSequence:
+          type: object
+          properties:
+            CodeValue:
+              type: string
+            CodingSchemeDesignator:
+              type: string
+            CodeMeaning:
+              type: string
+        ScheduledStationGeographicLocationCodeSequence:
+          type: object
+          properties:
+            CodeValue:
+              type: string
+            CodingSchemeDesignator:
+              type: string
+            CodeMeaning:
+              type: string
+        ScheduledHumanPerformersSequence:
+          type: array
+          items:
+            type: object
+            properties:
+              HumanPerformerCodeSequence:
+                type: object
+                properties:
+                  CodeValue:
+                    type: string
+                  CodingSchemeDesignator:
+                    type: string
+                  CodeMeaning:
+                    type: string
+              HumanPerformerName:
+                type: string
+        ScheduledProcedureStepDescription:
+          type: string
+        ScheduledProtocolCodeSequence:
+          type: object
+          properties:
+            CodeValue:
+              type: string
+            CodingSchemeDesignator:
+              type: string
+            CodeMeaning:
+              type: string
+        ReferencedRequestSequence:
+          type: array
+          items:
+            type: object
+            properties:
+              StudyInstanceUID:
+                type: string
+              AccessionNumber:
+                type: string
+              RequestedProcedureID:
+                type: string
+              RequestedProcedureDescription:
+                type: string

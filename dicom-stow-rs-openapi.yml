@@ -1,0 +1,194 @@
+openapi: 3.0.0
+info:
+  title: DICOM Web STOW-RS API
+  description: API for DICOM Web Store Over the Web (STOW-RS) service
+  version: 1.0.0
+  contact:
+    name: DICOM Standard Committee
+    url: https://www.dicomstandard.org/
+
+servers:
+  - url: https://api.example.com/dicom-web
+    description: Main server
+
+paths:
+  /studies:
+    post:
+      summary: Store DICOM instances
+      description: Store one or more DICOM instances to create new studies
+      tags:
+        - STOW-RS
+      parameters:
+        - name: Accept
+          in: header
+          description: The media types acceptable for the response
+          required: true
+          schema:
+            type: string
+            enum: ['application/dicom+json']
+        - name: Content-Type
+          in: header
+          description: The media type of the request payload
+          required: true
+          schema:
+            type: string
+            enum: ['multipart/related; type="application/dicom+json"']
+      requestBody:
+        required: true
+        content:
+          multipart/related:
+            schema:
+              type: object
+              properties:
+                metadata:
+                  type: object
+                  description: DICOM metadata in JSON format (Part 10 File Meta Information)
+                bulkdata:
+                  type: string
+                  format: binary
+                  description: DICOM instance data (in PS3.10 File Format)
+      responses:
+        '200':
+          description: Successful storage of all instances
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorageResponse'
+        '202':
+          description: Accepted but with warnings
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorageResponse'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '409':
+          description: Conflict - Unable to store any instances
+        '503':
+          description: Service Unavailable
+      security:
+        - bearerAuth: []
+
+  /studies/{study}:
+    post:
+      summary: Store DICOM instances in a specific study
+      description: Store one or more DICOM instances in an existing or new study
+      tags:
+        - STOW-RS
+      parameters:
+        - name: study
+          in: path
+          required: true
+          description: Study Instance UID
+          schema:
+            type: string
+            pattern: '^[0-9.]+$'
+        - name: Accept
+          in: header
+          description: The media types acceptable for the response
+          required: true
+          schema:
+            type: string
+            enum: ['application/dicom+json']
+        - name: Content-Type
+          in: header
+          description: The media type of the request payload
+          required: true
+          schema:
+            type: string
+            enum: ['multipart/related; type="application/dicom+json"']
+      requestBody:
+        required: true
+        content:
+          multipart/related:
+            schema:
+              type: object
+              properties:
+                metadata:
+                  type: object
+                  description: DICOM metadata in JSON format (Part 10 File Meta Information)
+                bulkdata:
+                  type: string
+                  format: binary
+                  description: DICOM instance data (in PS3.10 File Format)
+      responses:
+        '200':
+          description: Successful storage of all instances
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorageResponse'
+        '202':
+          description: Accepted but with warnings
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorageResponse'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '409':
+          description: Conflict - Unable to store any instances
+        '503':
+          description: Service Unavailable
+      security:
+        - bearerAuth: []
+
+components:
+  schemas:
+    StorageResponse:
+      type: object
+      properties:
+        RetrieveURL:
+          type: string
+          description: URL for retrieving the stored instance
+        ReferencedSOPSequence:
+          type: array
+          items:
+            type: object
+            properties:
+              SOPClassUID:
+                type: string
+                description: Unique identifier for the SOP Class
+              SOPInstanceUID:
+                type: string
+                description: Unique identifier for the SOP Instance
+              RetrieveURL:
+                type: string
+                description: URL for retrieving this specific instance
+        FailedSOPSequence:
+          type: array
+          items:
+            type: object
+            properties:
+              SOPClassUID:
+                type: string
+                description: Unique identifier for the SOP Class of the failed instance
+              SOPInstanceUID:
+                type: string
+                description: Unique identifier for the failed SOP Instance
+              FailureReason:
+                type: string
+                description: Reason for failure in storing the instance
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JSON Web Token (JWT) used for authentication

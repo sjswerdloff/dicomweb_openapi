@@ -1,0 +1,273 @@
+openapi: 3.0.0
+info:
+  title: DICOM Web QIDO-RS API
+  version: 1.0.0
+  description: API specification for DICOM Web QIDO-RS (Query based on ID for DICOM Objects - RESTful Services)
+
+paths:
+  /studies:
+    get:
+      summary: Search for Studies
+      description: This resource allows searching for DICOM studies based on specified parameters.
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/fuzzymatching'
+        - $ref: '#/components/parameters/includefield'
+        - $ref: '#/components/parameters/StudyDate'
+        - $ref: '#/components/parameters/StudyTime'
+        - $ref: '#/components/parameters/AccessionNumber'
+        - $ref: '#/components/parameters/ModalitiesInStudy'
+        - $ref: '#/components/parameters/ReferringPhysicianName'
+        - $ref: '#/components/parameters/PatientName'
+        - $ref: '#/components/parameters/PatientID'
+        - $ref: '#/components/parameters/StudyInstanceUID'
+        - $ref: '#/components/parameters/StudyID'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DicomStudy'
+
+  /series:
+    get:
+      summary: Search for Series
+      description: This resource allows searching for DICOM series based on specified parameters.
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/fuzzymatching'
+        - $ref: '#/components/parameters/includefield'
+        - $ref: '#/components/parameters/Modality'
+        - $ref: '#/components/parameters/SeriesInstanceUID'
+        - $ref: '#/components/parameters/SeriesNumber'
+        - $ref: '#/components/parameters/PerformedProcedureStepStartDate'
+        - $ref: '#/components/parameters/PerformedProcedureStepStartTime'
+        - $ref: '#/components/parameters/RequestAttributeSequence.ScheduledProcedureStepID'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DicomSeries'
+
+  /instances:
+    get:
+      summary: Search for Instances
+      description: This resource allows searching for DICOM instances based on specified parameters.
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/fuzzymatching'
+        - $ref: '#/components/parameters/includefield'
+        - $ref: '#/components/parameters/SOPClassUID'
+        - $ref: '#/components/parameters/SOPInstanceUID'
+        - $ref: '#/components/parameters/InstanceNumber'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/dicom+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DicomInstance'
+
+components:
+  parameters:
+    limit:
+      name: limit
+      in: query
+      description: Maximum number of results to return
+      schema:
+        type: integer
+    offset:
+      name: offset
+      in: query
+      description: Number of results to skip before returning matches
+      schema:
+        type: integer
+    fuzzymatching:
+      name: fuzzymatching
+      in: query
+      description: Whether fuzzy semantic matching should be performed
+      schema:
+        type: boolean
+    includefield:
+      name: includefield
+      in: query
+      description: Fields to include in the response
+      schema:
+        type: array
+        items:
+          type: string
+    StudyDate:
+      name: StudyDate
+      in: query
+      description: Date the Study started
+      schema:
+        type: string
+        format: date
+    StudyTime:
+      name: StudyTime
+      in: query
+      description: Time the Study started
+      schema:
+        type: string
+        format: time
+    AccessionNumber:
+      name: AccessionNumber
+      in: query
+      description: Accession Number for the Study
+      schema:
+        type: string
+    ModalitiesInStudy:
+      name: ModalitiesInStudy
+      in: query
+      description: Modalities used in the Study
+      schema:
+        type: array
+        items:
+          type: string
+    ReferringPhysicianName:
+      name: ReferringPhysicianName
+      in: query
+      description: Name of the referring physician
+      schema:
+        type: string
+    PatientName:
+      name: PatientName
+      in: query
+      description: Patient's name
+      schema:
+        type: string
+    PatientID:
+      name: PatientID
+      in: query
+      description: Patient's ID
+      schema:
+        type: string
+    StudyInstanceUID:
+      name: StudyInstanceUID
+      in: query
+      description: Unique identifier of the Study
+      schema:
+        type: string
+    StudyID:
+      name: StudyID
+      in: query
+      description: ID of the Study
+      schema:
+        type: string
+    Modality:
+      name: Modality
+      in: query
+      description: Modality of the Series
+      schema:
+        type: string
+    SeriesInstanceUID:
+      name: SeriesInstanceUID
+      in: query
+      description: Unique identifier of the Series
+      schema:
+        type: string
+    SeriesNumber:
+      name: SeriesNumber
+      in: query
+      description: Number of the Series
+      schema:
+        type: string
+    PerformedProcedureStepStartDate:
+      name: PerformedProcedureStepStartDate
+      in: query
+      description: Date the procedure step started
+      schema:
+        type: string
+        format: date
+    PerformedProcedureStepStartTime:
+      name: PerformedProcedureStepStartTime
+      in: query
+      description: Time the procedure step started
+      schema:
+        type: string
+        format: time
+    RequestAttributeSequence.ScheduledProcedureStepID:
+      name: RequestAttributeSequence.ScheduledProcedureStepID
+      in: query
+      description: ID of the scheduled procedure step
+      schema:
+        type: string
+    SOPClassUID:
+      name: SOPClassUID
+      in: query
+      description: Unique identifier for the SOP Class
+      schema:
+        type: string
+    SOPInstanceUID:
+      name: SOPInstanceUID
+      in: query
+      description: Unique identifier for the SOP Instance
+      schema:
+        type: string
+    InstanceNumber:
+      name: InstanceNumber
+      in: query
+      description: Number of the Instance
+      schema:
+        type: string
+
+  schemas:
+    DicomStudy:
+      type: object
+      properties:
+        StudyInstanceUID:
+          type: string
+        StudyDate:
+          type: string
+        StudyTime:
+          type: string
+        AccessionNumber:
+          type: string
+        ModalitiesInStudy:
+          type: array
+          items:
+            type: string
+        ReferringPhysicianName:
+          type: string
+        PatientName:
+          type: string
+        PatientID:
+          type: string
+        StudyID:
+          type: string
+    
+    DicomSeries:
+      type: object
+      properties:
+        SeriesInstanceUID:
+          type: string
+        Modality:
+          type: string
+        SeriesNumber:
+          type: string
+        PerformedProcedureStepStartDate:
+          type: string
+        PerformedProcedureStepStartTime:
+          type: string
+    
+    DicomInstance:
+      type: object
+      properties:
+        SOPClassUID:
+          type: string
+        SOPInstanceUID:
+          type: string
+        InstanceNumber:
+          type: string
