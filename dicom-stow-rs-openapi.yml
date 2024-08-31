@@ -16,6 +16,7 @@ paths:
     post:
       summary: Store DICOM instances
       description: Store one or more DICOM instances to create new studies
+      operationId: postStudyRootMultipleInstances
       tags:
         - STOW-RS
       parameters:
@@ -39,12 +40,15 @@ paths:
           multipart/related:
             schema:
               type: object
+              additionalProperties: true
               properties:
                 metadata:
                   type: object
                   description: DICOM metadata in JSON format (Part 10 File Meta Information)
                 bulkdata:
                   type: string
+                  pattern: ^https?:\/\/[^\/]+\/studies\/[^\/]+\/series\/[^\/]+\/instances\/[^\/]+\/bulk\/[0-9A-Fa-f]{8}$
+                  maxLength: 2048
                   format: binary
                   description: DICOM instance data (in PS3.10 File Format)
       responses:
@@ -54,6 +58,7 @@ paths:
             application/dicom+json:
               schema:
                 type: array
+                maxItems: 10000
                 items:
                   $ref: '#/components/schemas/StorageResponse'
         '202':
@@ -62,18 +67,25 @@ paths:
             application/dicom+json:
               schema:
                 type: array
+                maxItems: 10000
                 items:
                   $ref: '#/components/schemas/StorageResponse'
         '400':
-          description: Bad request
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Forbidden
+          $ref: '#/components/responses/Forbidden'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '409':
-          description: Conflict - Unable to store any instances
+          $ref: '#/components/responses/Conflict'
+        '415':
+           $ref: "#/components/responses/UnsupportedMediaType"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
-          description: Service Unavailable
+          $ref: '#/components/responses/ServiceUnavailable'
       security:
         - bearerAuth: []
 
@@ -81,6 +93,7 @@ paths:
     post:
       summary: Store DICOM instances in a specific study
       description: Store one or more DICOM instances in an existing or new study
+      operationId: postSingleStudyMultipleInstances
       tags:
         - STOW-RS
       parameters:
@@ -90,6 +103,7 @@ paths:
           description: Study Instance UID
           schema:
             type: string
+            maxLength: 64
             pattern: '^[0-9.]+$'
         - name: Accept
           in: header
@@ -114,11 +128,42 @@ paths:
               properties:
                 metadata:
                   type: object
-                  description: DICOM metadata in JSON format (Part 10 File Meta Information)
+                  description: DICOM metadata in JSON format
+                  additionalProperties:
+                    oneOf:
+                      - type: string
+                        maxLength: 64  # Adjust based on your specific requirements
+                        pattern: '^[\x20-\x7E]*$'  # Printable ASCII characters
+                      - type: array
+                        items:
+                          type: string
+                          maxLength: 64
+                          pattern: '^[\x20-\x7E]*$'
+                      - type: object
+                        additionalProperties: false
+                        properties:
+                          Value:
+                            type: array
+                            items:
+                              oneOf:
+                                - type: string
+                                  maxLength: 64
+                                  pattern: '^[\x20-\x7E]*$'
+                                - type: number
+                          vr:
+                            type: string
+                            enum: ['AE', 'AS', 'AT', 'CS', 'DA', 'DS', 'DT', 'FL', 'FD', 'IS', 'LO', 'LT', 'OB', 'OD', 'OF', 'OW', 'PN', 'SH', 'SL', 'SQ', 'SS', 'ST', 'TM', 'UI', 'UL', 'UN', 'US', 'UT']
                 bulkdata:
-                  type: string
-                  format: binary
-                  description: DICOM instance data (in PS3.10 File Format)
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Binary data for DICOM instances
+            encoding:
+              metadata:
+                contentType: application/dicom+json
+              bulkdata:
+                contentType: application/octet-stream
       responses:
         '200':
           description: Successful storage of all instances
@@ -126,6 +171,7 @@ paths:
             application/dicom+json:
               schema:
                 type: array
+                maxItems: 10000
                 items:
                   $ref: '#/components/schemas/StorageResponse'
         '202':
@@ -134,61 +180,296 @@ paths:
             application/dicom+json:
               schema:
                 type: array
+                maxItems: 10000
                 items:
                   $ref: '#/components/schemas/StorageResponse'
         '400':
-          description: Bad request
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Forbidden
+          $ref: '#/components/responses/Forbidden'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '409':
-          description: Conflict - Unable to store any instances
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: "#/components/responses/UnsupportedMediaType"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
-          description: Service Unavailable
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/BadRequest'
       security:
         - bearerAuth: []
 
 components:
+  responses:
+    SuccessfulRetrieval:
+      description: Successful retrieval
+      content:
+        multipart/related:
+          schema:
+            type: string
+            format: binary
+    BadRequest:
+      description: Bad request
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: Service Unavailable
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              message:
+                type: string
+                maxLength: 64
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "Resource not found"
+              resourceId:
+                type: string
+                pattern: '^[\x20-\x7E]+$'
+                maxLength: 1024
+                example: "Resource ID not found"
+    NotAcceptable:
+      description: Not Acceptable
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              message:
+                type: string
+                maxLength: 1024
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "The request is not supported"
+    TooManyRequests:
+      description: Too many requests, please try again later.
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              message:
+                type: string
+                maxLength: 1024
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "Rate limit exceeded"
+              retryAfter:
+                type: integer
+                description: Number of seconds to wait before retrying
+                example: 60
+      headers:
+        Retry-After:
+          description: Number of seconds to wait before retrying
+          schema:
+            type: integer
+    DefaultError:
+      description: An unexpected error occurred.
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              message:
+                type: string
+                maxLength: 1024
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "An unexpected error occurred"
+              errorCode:
+                type: string
+                maxLength: 64
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "INTERNAL_SERVER_ERROR"
+    Conflict:
+      description: The request could not be completed due to a conflict with the current state of the target resource
+      # A simple conflict is when trying to store an object with the same SOP Instance UID
+      # A more complex conflict is when the same Series Instance UID is being used but has a different parent Study Instance UID
+      #   then the current Series (Instance UID) that is stored
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              message:
+                type: string
+                example: "Unable to update resource due to a conflict"
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                maxLength: 1024
+              details:
+                type: object
+                # An array of items might be better, with a single item
+                # consisting of an Instance UID and a current and attempted value
+                additionalProperties: true
+                properties:
+                  conflictingField:
+                    type: string
+                    enum:
+                      - "SOPInstanceUID"
+                      - "SeriesInstanceUID"
+                      - "StudyInstanceUID"
+                  currentValue:
+                    type: string
+                    maxLength: 64
+                    pattern: '^[0-9.]+$'
+                  attemptedValue:
+                    type: string
+                    maxLength: 64
+                    pattern: '^[0-9.]+$'
+                example:
+                  conflictingField: "SOPInstanceUID"
+                  currentValue: "1.2.3.4"
+                  attemptedValue: "1.2.3.4"
+              conflictType:
+                type: string
+                enum: [CONCURRENT_MODIFICATION, UNIQUE_CONSTRAINT, STATE_CONFLICT, DEPENDENCY_CONFLICT]
+                example: "UNIQUE_CONSTRAINT"
+    UnsupportedMediaType:
+      description: Media Type is not Supported
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
     StorageResponse:
       type: object
+      additionalProperties: true
       properties:
         RetrieveURL:
           type: string
+          maxLength: 4096
+          pattern: ^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i
           description: URL for retrieving the stored instance
         ReferencedSOPSequence:
           type: array
+          maxItems: 10000
           items:
             type: object
             properties:
               SOPClassUID:
                 type: string
+                maxLength: 64
+                pattern: '^[0-9.]+$'
                 description: Unique identifier for the SOP Class
               SOPInstanceUID:
                 type: string
+                maxLength: 64
+                pattern: '^[0-9.]+$'
                 description: Unique identifier for the SOP Instance
               RetrieveURL:
                 type: string
+                maxLength: 4096
+                pattern: ^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i
                 description: URL for retrieving this specific instance
+            additionalProperties: false
         FailedSOPSequence:
           type: array
+          maxItems: 10000
           items:
             type: object
+            additionalProperties: false
             properties:
               SOPClassUID:
                 type: string
+                maxLength: 64
+                pattern: '^[0-9.]+$'
                 description: Unique identifier for the SOP Class of the failed instance
               SOPInstanceUID:
                 type: string
+                maxLength: 64
+                pattern: '^[0-9.]+$'
                 description: Unique identifier for the failed SOP Instance
               FailureReason:
                 type: string
+                pattern: '^[\x20-\x7E]+$'
+                maxLength: 1024
                 description: Reason for failure in storing the instance
 
+
+
+    ErrorResponse:
+      type: object
+      properties:
+        errorMessage:
+          type: string
+          pattern: '^[\x20-\x7E]+$'
+          maxLength: 1024
+        errorCode:
+          type: string
+          pattern: '^[\x20-\x7E]+$'
+          maxLength: 64
+        errorDetails:
+          type: object
+          maxLength: 1024
+      additionalProperties: true
+
   securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+    basicAuth:
+      type: http
+      scheme: basic
+
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JSON Web Token (JWT) used for authentication
+
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://example.com/oauth/authorize
+          tokenUrl: https://example.com/oauth/token
+          scopes:
+            read:data: Read access to data
+            write:data: Write access to data
+
+    openIdConnect:
+      type: openIdConnect
+      openIdConnectUrl: https://example.com/.well-known/openid-configuration
+
+    jwtBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - apiKey: []
+  - basicAuth: []
+  - bearerAuth: []
+  - oauth2: ['read:data', 'write:data']
+  - openIdConnect: []
+  - jwtBearer: []
