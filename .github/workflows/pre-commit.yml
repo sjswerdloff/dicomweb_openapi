@@ -31,7 +31,8 @@ jobs:
       - name: Install Vacuum
         run: go install github.com/daveshanley/vacuum@latest
 
-      - uses: pre-commit/action@v3
+        # with pre-commit/action it is necessary to specify the full version rather than just the major
+      - uses: pre-commit/action@v3.0.1
 
       # Runs a single command using the runners shell
       # - name: Run a one-line script
