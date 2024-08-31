@@ -65,7 +65,7 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-        
+
         default:
           $ref: '#/components/responses/DefaultError'
 
@@ -91,7 +91,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         default:
           $ref: '#/components/responses/DefaultError'
-    
+
     post:
       operationId: UpdateWorkitem
       summary: Update a Workitem
@@ -353,7 +353,7 @@ components:
                 maxLength: 1024
               details:
                 type: object
-                example: 
+                example:
                   conflictingField: "workitemUID"
                   currentValue: "workitemUID"
                   attemptedValue: "workitemUID"
@@ -571,6 +571,3 @@ security:
   - oauth2: ['read:data', 'write:data']
   - openIdConnect: []
   - jwtBearer: []
-
-
-

@@ -247,7 +247,7 @@ components:
           type: string
         StudyID:
           type: string
-    
+
     DicomSeries:
       type: object
       properties:
@@ -261,7 +261,7 @@ components:
           type: string
         PerformedProcedureStepStartTime:
           type: string
-    
+
     DicomInstance:
       type: object
       properties:

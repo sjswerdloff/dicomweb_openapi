@@ -387,6 +387,3 @@ Production UPS-RS WebSocket server
   "subscriptionUID": "string"
 }
 ```
-
-
-
