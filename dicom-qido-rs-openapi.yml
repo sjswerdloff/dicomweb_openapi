@@ -8,6 +8,7 @@ paths:
   /studies:
     get:
       summary: Search for Studies
+      operationId: SearchForStudies
       description: This resource allows searching for DICOM studies based on specified parameters.
       parameters:
         - $ref: '#/components/parameters/limit'
@@ -30,12 +31,29 @@ paths:
             application/dicom+json:
               schema:
                 type: array
+                maxItems: 2048
                 items:
                   $ref: '#/components/schemas/DicomStudy'
-
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/BadRequest'
   /series:
     get:
       summary: Search for Series
+      operationId: SearchForSeries
       description: This resource allows searching for DICOM series based on specified parameters.
       parameters:
         - $ref: '#/components/parameters/limit'
@@ -55,12 +73,29 @@ paths:
             application/dicom+json:
               schema:
                 type: array
+                maxItems: 2048
                 items:
                   $ref: '#/components/schemas/DicomSeries'
-
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/BadRequest'
   /instances:
     get:
       summary: Search for Instances
+      operationId: SearchForInstances
       description: This resource allows searching for DICOM instances based on specified parameters.
       parameters:
         - $ref: '#/components/parameters/limit'
@@ -77,9 +112,25 @@ paths:
             application/dicom+json:
               schema:
                 type: array
+                maxItems: 4294967294  # 2^32-2, because consistency satisfies those hobgoblins
                 items:
                   $ref: '#/components/schemas/DicomInstance'
-
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/BadRequest'
 components:
   parameters:
     limit:
@@ -88,12 +139,16 @@ components:
       description: Maximum number of results to return
       schema:
         type: integer
+        maximum: 4294967294
+        minimum: 0
     offset:
       name: offset
       in: query
       description: Number of results to skip before returning matches
       schema:
         type: integer
+        maximum: 4294967294
+        minimum: 0
     fuzzymatching:
       name: fuzzymatching
       in: query
@@ -106,28 +161,31 @@ components:
       description: Fields to include in the response
       schema:
         type: array
+        maxItems: 200  # at a certain point, you run out of URL
         items:
           type: string
+          pattern: '^([0-9a-fA-F]{8}|[a-zA-Z][a-zA-Z0-9]*)$'
+      style: form
+      explode: false
+
     StudyDate:
       name: StudyDate
       in: query
       description: Date the Study started
       schema:
-        type: string
-        format: date
+        $ref: '#/components/schemas/DICOM_DATE_RANGE_QUERY'
     StudyTime:
       name: StudyTime
       in: query
       description: Time the Study started
       schema:
-        type: string
-        format: time
+        $ref: '#/components/schemas/DICOM_TIME_RANGE_QUERY'
     AccessionNumber:
       name: AccessionNumber
       in: query
       description: Accession Number for the Study
       schema:
-        type: string
+        $ref: "#/components/schemas/SH"
     ModalitiesInStudy:
       name: ModalitiesInStudy
       in: query
@@ -135,139 +193,660 @@ components:
       schema:
         type: array
         items:
-          type: string
+          $ref: "#/components/schemas/CS"
+        minItems: 1
+        maxItems: 512
     ReferringPhysicianName:
       name: ReferringPhysicianName
       in: query
       description: Name of the referring physician
       schema:
-        type: string
+        $ref: "#/components/schemas/PersonName"
     PatientName:
       name: PatientName
       in: query
       description: Patient's name
       schema:
-        type: string
+        $ref: "#/components/schemas/PersonName"
     PatientID:
       name: PatientID
       in: query
       description: Patient's ID
       schema:
-        type: string
+        $ref: "#/components/schemas/LO"
     StudyInstanceUID:
       name: StudyInstanceUID
       in: query
-      description: Unique identifier of the Study
+      description: Unique identifier for the Study. Multiple values can be provided to query across multiple studies.
       schema:
-        type: string
+        oneOf:
+          - $ref: "#/components/schemas/UI"
+          - type: array
+            maxItems: 1024
+            items:
+              $ref: "#/components/schemas/UI"
+      style: form
+      explode: false
     StudyID:
       name: StudyID
       in: query
       description: ID of the Study
       schema:
-        type: string
+        $ref: "#/components/schemas/SH"
     Modality:
       name: Modality
       in: query
-      description: Modality of the Series
+      description: The modality of the instances. Multiple values can be provided to query across different modalities.
       schema:
-        type: string
+        oneOf:
+          - $ref: "#/components/schemas/CS"
+          - type: array
+            maxItems: 512
+            items:
+              $ref: "#/components/schemas/CS"
+      style: form
+      explode: false
     SeriesInstanceUID:
       name: SeriesInstanceUID
       in: query
-      description: Unique identifier of the Series
+      description: Unique identifier for the Series. Multiple values can be provided to query across multiple series.
       schema:
-        type: string
+        oneOf:
+          - $ref: "#/components/schemas/UI"
+          - type: array
+            maxItems: 1024
+            items:
+              $ref: "#/components/schemas/UI"
+      style: form
+      explode: false
     SeriesNumber:
       name: SeriesNumber
       in: query
-      description: Number of the Series
+      description: Number of the Series, Multiple values can be provided.
       schema:
-        type: string
+        oneOf:
+          - $ref: "#/components/schemas/IS"
+          - type: array
+            maxItems: 512
+            items:
+              $ref: "#/components/schemas/IS"
+      style: form
+      explode: false
     PerformedProcedureStepStartDate:
       name: PerformedProcedureStepStartDate
       in: query
       description: Date the procedure step started
       schema:
-        type: string
-        format: date
+        $ref: "#/components/schemas/DICOM_DATE_RANGE_QUERY"
     PerformedProcedureStepStartTime:
       name: PerformedProcedureStepStartTime
       in: query
       description: Time the procedure step started
       schema:
-        type: string
-        format: time
+        $ref: "#/components/schemas/DICOM_TIME_RANGE_QUERY"
     RequestAttributeSequence.ScheduledProcedureStepID:
       name: RequestAttributeSequence.ScheduledProcedureStepID
       in: query
       description: ID of the scheduled procedure step
       schema:
-        type: string
+        $ref: "#/components/schemas/SH"
     SOPClassUID:
       name: SOPClassUID
       in: query
-      description: Unique identifier for the SOP Class
+      description: SOP Class UID(s) of the instances. Multiple values can be provided.
       schema:
-        type: string
+        oneOf:
+          - $ref: "#/components/schemas/UI"
+          - type: array
+            maxItems: 256
+            items:
+              $ref: "#/components/schemas/UI"
+      style: form
+      explode: false
     SOPInstanceUID:
       name: SOPInstanceUID
       in: query
-      description: Unique identifier for the SOP Instance
+      description: Unique identifier(s) for the SOP Instance(s). Multiple values can be provided.
       schema:
-        type: string
+        oneOf:
+          - $ref: "#/components/schemas/UI"
+          - type: array
+            maxItems: 1024  # but you'll run out of URL length
+            items:
+              $ref: "#/components/schemas/UI"
+      style: form
+      explode: false
     InstanceNumber:
       name: InstanceNumber
       in: query
-      description: Number of the Instance
+      description: A number that identifies this instance within its series. Multiple values can be provided.
       schema:
-        type: string
+        oneOf:
+          - $ref: "#/components/schemas/IS"
+          - type: array
+            maxItems: 2048
+            items:
+              $ref: "#/components/schemas/IS"
+      style: form
+      explode: false
 
   schemas:
+    PersonName:
+      type: object
+      additionalProperties: false
+      properties:
+        Alphabetic:
+          type: string
+          pattern: '^[A-Za-z\- \x27^]*$'
+          maxLength: 64
+        Ideographic:
+          type: string
+          maxLength: 64
+        Phonetic:
+          type: string
+          maxLength: 64
+      maxProperties: 3
+    # String VRs
+    AE:  # Application Entity
+      type: string
+      minLength: 1
+      maxLength: 16
+      pattern: '^[A-Za-z0-9_-]{1,16}$'
+      description: >
+        Application Entity. 
+        Limited to uppercase and lowercase letters, numbers, underscore, and hyphen.
+        Length must be between 1 and 16 characters.
+
+    AS:  # Age String
+      type: string
+      minLength: 4
+      maxLength: 4
+      pattern: '^([0-9]{3}[DWMY])$'
+
+    CS:  # Code String
+      type: string
+      pattern: '^[A-Z0-9 _]+$'
+      maxLength: 16
+
+    DA:  # Date
+      type: string
+      minLength: 8
+      maxLength: 8
+      pattern: '^[0-9]{8}$'
+
+    DS:  # Decimal String
+      type: string
+      pattern: '^-?[0-9.]+$'
+      maxLength: 16
+
+    DT:  # Date Time
+      type: string
+      minLength: 4
+      maxLength: 26
+      pattern: '^[0-9]{4}([0-9]{2}([0-9]{2}([0-9]{2}([0-9]{2}([0-9]{2}(.[0-9]+)?)?)?)?)?)?([+-][0-9]{4})?$'
+
+    IS:  # Integer String
+      type: string
+      pattern: '^-?[0-9]+$'
+      maxLength: 12
+
+    LO:  # Long String
+      type: string
+      maxLength: 64
+      pattern: '^[\x20-\x7E]*$'
+
+    LT:  # Long Text
+      type: string
+      maxLength: 10240
+      pattern: '^[\x20-\x7E\r\n\t\f\x80-\xFF]*$'
+
+    PN:  # Person Name
+      $ref: '#/components/schemas/PersonName'
+
+    SH:  # Short String
+      type: string
+      maxLength: 16
+      pattern: |-
+        ^[ ]*[!-Z^-~][ !-Z^-~]{0,14}[!-Z^-~][ ]*$|^[ ]*$
+
+    ST:  # Short Text
+      type: string
+      maxLength: 1024
+      pattern: '^[\s\S]*$'
+
+    TM:  # Time
+      type: string
+      minLength: 2
+      maxLength: 16
+      pattern: '^([0-1][0-9]|2[0-3])(([0-5][0-9]){2}(.[0-9]+)?)?$'
+
+    UI:  # Unique Identifier (UID)
+      type: string
+      pattern: '^[0-9.]+$'
+      maxLength: 64
+
+    UR:  # Universal Resource Identifier or Universal Resource Locator (URI/URL)
+      type: string
+      format: uri
+      maxLength: 10240  # Common maximum length for URLs is apparently 2083, but formally DICOM says 2^32-2
+      # so, maybe a compromise that matches LT ?
+
+    UT:  # Unlimited Text
+      type: string
+      maxLength: 4294967294  # 2^32-2, maximum length in DICOM, 
+      # The length of the Value of UC, UR and UT VRs is limited only by the size of the maximum unsigned integer representable
+      # in a 32 bit VL field minus two, since FFFFFFFFH is reserved and lengths are required to be even.
+      # but we aren't doing the complete works of Shakespeare (~6 Million characters?)
+      pattern: '^[\x20-\x7E\r\n\t\f\x80-\xFF]*$'
+
+    # Numeric VRs
+    FL:  # Floating Point Single
+      type: number
+      format: float
+
+    FD:  # Floating Point Double
+      type: number
+      format: double
+
+    SL:  # Signed Long
+      type: integer
+      format: int32
+
+    SS:  # Signed Short
+      type: integer
+      format: int16
+
+    UL:  # Unsigned Long
+      type: integer
+      format: uint32
+      minimum: 0
+
+    US:  # Unsigned Short
+      type: integer
+      format: uint16
+      minimum: 0
+
+    # Binary VRs
+    OB:  # Other Byte
+      type: string
+      format: binary
+      maxLength: 4294967294  # 2^32-2
+
+    OD:  # Other Double
+      type: string
+      format: binary
+      maxLength: 4294967288  # (2^32-8), must be a multiple of 8
+
+    OF:  # Other Float
+      type: string
+      format: binary
+      maxLength: 4294967292  # (2^32-4), must be a multiple of 4
+
+    OL:  # Other Long
+      type: string
+      format: binary
+      maxLength: 4294967292  # (2^32-4), must be a multiple of 4
+
+    OW:  # Other Word
+      type: string
+      format: binary
+      maxLength: 4294967294  # 2^32-2, must be a multiple of 2
+
+    UN:  # Unknown
+      type: string
+      format: binary
+      maxLength: 4294967294  # 2^32-2
+
+    # Sequence VR
+    SQ:  # Sequence of Items
+      type: array
+      items:
+        type: object
+        # The specific structure would depend on the sequence contents
+      maxItems: 4294967295  # 2^32-1
+
+    DT_TZ:  # Date Time with Time Zone
+      allOf:
+        - $ref: '#/components/schemas/DT'
+        - type: object
+          properties:
+            TimeZone:
+              type: string
+              pattern: '^[+-][0-9]{4}$'
+    DA_RANGE:  # Date Range
+      type: object
+      properties:
+        start:
+          $ref: '#/components/schemas/DA'
+        end:
+          $ref: '#/components/schemas/DA'
+      minProperties: 1
+
+    TM_RANGE:  # Time Range
+      type: object
+      properties:
+        start:
+          $ref: '#/components/schemas/TM'
+        end:
+          $ref: '#/components/schemas/TM'
+      minProperties: 1
+
+    DT_RANGE:  # Date Time Range
+      type: object
+      properties:
+        start:
+          $ref: '#/components/schemas/DT'
+        end:
+          $ref: '#/components/schemas/DT'
+      minProperties: 1
+
+    # Updated DA_TM to include flexible range
+    DA_TM:  # Date Time
+      oneOf:
+        - type: object
+          properties:
+            Date:
+              $ref: '#/components/schemas/DA'
+            Time:
+              $ref: '#/components/schemas/TM'
+          required: [Date, Time]
+        - type: object
+          properties:
+            DateRange:
+              $ref: '#/components/schemas/DA_RANGE'
+            TimeRange:
+              $ref: '#/components/schemas/TM_RANGE'
+          required: [DateRange]
+
+    # Updated schema for Date-Time Range
+    DA_TM_RANGE:
+      type: object
+      properties:
+        start:
+          $ref: '#/components/schemas/DA_TM'
+        end:
+          $ref: '#/components/schemas/DA_TM'
+      minProperties: 1
+
+    # Helper schema for DICOM date-time range query format
+    DICOM_DATE_RANGE_QUERY:
+      type: string
+      pattern: '^([0-9]{8}-)?([0-9]{8})?$'
+      maxLength: 17
+
+    DICOM_TIME_RANGE_QUERY:
+      type: string
+      pattern: '^([0-9]{6}-)?([0-9]{6})?$'
+      maxLength: 13
+
+    DICOM_DATETIME_RANGE_QUERY:
+      type: string
+      pattern: '^([0-9]{14}-)?([0-9]{14})?$'
+      maxLength: 29
+
     DicomStudy:
       type: object
+      additionalProperties: true # Study Description?
       properties:
         StudyInstanceUID:
           type: string
+          maxLength: 64
+          pattern: '^[0-9.]+$'
         StudyDate:
-          type: string
+          $ref: "#/components/schemas/DA"
         StudyTime:
-          type: string
+          $ref: "#/components/schemas/DT"          
         AccessionNumber:
-          type: string
+          $ref: "#/components/schemas/SH"
         ModalitiesInStudy:
           type: array
-          items:
-            type: string
+          items:  # this could be done as an enumeration, but would fail in the face of new Modalities.
+            $ref: "#/components/schemas/CS"
+          minItems: 1
+          maxItems: 512
         ReferringPhysicianName:
-          type: string
+          $ref: '#/components/schemas/PersonName'
         PatientName:
-          type: string
+          $ref: '#/components/schemas/PersonName'
         PatientID:
-          type: string
+          $ref: "#/components/schemas/LO"
         StudyID:
-          type: string
+          $ref: "#/components/schemas/SH"
 
     DicomSeries:
       type: object
+      additionalProperties: true
       properties:
         SeriesInstanceUID:
-          type: string
+          $ref: "#/components/schemas/UI"
         Modality:
-          type: string
+          $ref: "#/components/schemas/CS"
         SeriesNumber:
-          type: string
+          $ref: "#/components/schemas/IS"
         PerformedProcedureStepStartDate:
-          type: string
+          $ref: "#/components/schemas/DA"
         PerformedProcedureStepStartTime:
-          type: string
+          $ref: "#/components/schemas/DT"
 
     DicomInstance:
       type: object
+      additionalProperties: true
       properties:
         SOPClassUID:
-          type: string
+          $ref: "#/components/schemas/UI"
         SOPInstanceUID:
-          type: string
+          $ref: "#/components/schemas/UI"
         InstanceNumber:
+          $ref: "#/components/schemas/IS"
+
+    ErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - errorMessage
+      properties:
+        errorCode:
           type: string
+          pattern: '^[A-Z][A-Z0-9_]{2,31}$'
+          description: 'A unique identifier for the error, e.g., INVALID_INPUT, RESOURCE_NOT_FOUND'
+        errorMessage:
+          type: string
+          maxLength: 1000
+          pattern: '^[\x20-\x7E\s]{1,1000}$'
+          description: 'A human-readable description of the error'
+        errorDetails:
+          type: object
+          description: 'Additional details about the error'
+          additionalProperties:
+            oneOf:
+              - type: string
+                pattern: '^[\x20-\x7E\s]{1,1000}$'
+                maxLength: 1000
+              - type: number
+              - type: boolean
+              - type: array
+                maxItems: 1000
+                items:
+                  type: string
+                  pattern: '^[\x20-\x7E\s]{1,1000}$'
+                  maxLength: 1000
+        timestamp:
+          type: string
+          format: date-time
+          description: 'The time when the error occurred'
+        traceId:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+          description: 'A unique identifier for tracing this error instance'     
+          additionalProperties: false
+
+
+  responses:
+    SuccessfulRetrieval:
+      description: Successful retrieval
+      content:
+        multipart/related:
+          schema:
+            type: string
+            format: binary
+    BadRequest:
+      description: Bad request
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: Service Unavailable
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/dicom+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - resourceId
+            properties:
+              message:
+                type: string
+                minLength: 1
+                maxLength: 64
+                pattern: '^[A-Za-z0-9\s.,!?()-]*$'
+                description: 'A brief description of the not found error'
+                example: 'Resource not found'
+              resourceId:
+                type: string
+                minLength: 1
+                maxLength: 256
+                pattern: '^[A-Za-z0-9_-]+$'
+                description: 'The identifier of the resource that was not found'
+                example: 'user-123'
+              timestamp:
+                type: string
+                format: date-time
+                maxLength: 35
+                pattern: '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?)(Z|[+-]\d{2}:\d{2})$'
+                description: 'The time when the not found error occurred'
+              path:
+                type: string
+                maxLength: 2048
+                pattern: '^/[A-Za-z0-9_./-]*$'
+                description: 'The API path that resulted in the not found error'
+                example: '/api/v1/users/user-123'
+            additionalProperties: false
+    NotAcceptable:
+      description: Not Acceptable
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                maxLength: 1024
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "The request is not supported"
+            additionalProperties: false
+    TooManyRequests:
+      description: Too many requests, please try again later.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                maxLength: 1024
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "Rate limit exceeded"
+              retryAfter:
+                type: integer
+                description: Number of seconds to wait before retrying
+                example: 60
+            additionalProperties: false
+      headers:
+        Retry-After:
+          description: Number of seconds to wait before retrying
+          schema:
+            type: integer
+    DefaultError:
+      description: An unexpected error occurred.
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              message:
+                type: string
+                maxLength: 1024
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "An unexpected error occurred"
+              errorCode:
+                type: string
+                maxLength: 64
+                pattern: ^[\x20-\x7E\x0A\x0C\x0D\x09]*$
+                example: "INTERNAL_SERVER_ERROR"
+
+
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+    basicAuth:
+      type: http
+      scheme: basic
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://example.com/oauth/authorize
+          tokenUrl: https://example.com/oauth/token
+          scopes:
+            read:data: Read access to data
+            write:data: Write access to data
+
+    openIdConnect:
+      type: openIdConnect
+      openIdConnectUrl: https://example.com/.well-known/openid-configuration
+
+    jwtBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+
+
+
+security:
+  - apiKey: []
+  - basicAuth: []
+  - bearerAuth: []
+  - oauth2: ['read:data', 'write:data']
+  - openIdConnect: []
+  - jwtBearer: []
