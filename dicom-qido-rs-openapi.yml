@@ -353,7 +353,7 @@ components:
       maxLength: 16
       pattern: '^[A-Za-z0-9_-]{1,16}$'
       description: >
-        Application Entity. 
+        Application Entity.
         Limited to uppercase and lowercase letters, numbers, underscore, and hyphen.
         Length must be between 1 and 16 characters.
 
@@ -433,7 +433,7 @@ components:
 
     UT:  # Unlimited Text
       type: string
-      maxLength: 4294967294  # 2^32-2, maximum length in DICOM, 
+      maxLength: 4294967294  # 2^32-2, maximum length in DICOM,
       # The length of the Value of UC, UR and UT VRs is limited only by the size of the maximum unsigned integer representable
       # in a 32 bit VL field minus two, since FFFFFFFFH is reserved and lengths are required to be even.
       # but we aren't doing the complete works of Shakespeare (~6 Million characters?)
@@ -595,7 +595,7 @@ components:
         StudyDate:
           $ref: "#/components/schemas/DA"
         StudyTime:
-          $ref: "#/components/schemas/DT"          
+          $ref: "#/components/schemas/DT"
         AccessionNumber:
           $ref: "#/components/schemas/SH"
         ModalitiesInStudy:
@@ -678,7 +678,7 @@ components:
           type: string
           format: uuid
           pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
-          description: 'A unique identifier for tracing this error instance'     
+          description: 'A unique identifier for tracing this error instance'
           additionalProperties: false
 
 
