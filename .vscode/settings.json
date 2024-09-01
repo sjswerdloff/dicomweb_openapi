@@ -4,11 +4,16 @@
         "asyncapi",
         "bulkdata",
         "cancelrequest",
+        "DATETIME",
+        "DWMY",
+        "FFFFFFFFH",
         "fuzzymatching",
         "includefield",
         "mqtt",
         "openapi",
         "paho",
+        "QIDO",
+        "Suboperations",
         "WADO",
         "workitems"
     ]
